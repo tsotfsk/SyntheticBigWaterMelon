@@ -1,14 +1,9 @@
-"""This example spawns (bouncing) balls randomly on a L-shape constructed of 
-two segment shapes. Not interactive.
-"""
-
 # Python imports
 import random
 import json
 from easydict import EasyDict as edict
 from typing import List
-from numpy.random import choice
-# from game.ball import Ball
+import numpy as np
 
 # Library imports
 import pygame
@@ -19,10 +14,6 @@ import pymunk.pygame_util
 
 
 class Game(object):
-    """
-    This class implements a simple scene in which there is a static platform (made up of a couple of lines)
-    that don't move. Balls appear occasionally and drop onto the platform. They bounce around.
-    """
 
     def __init__(self, args) -> None:
         # Space
@@ -31,13 +22,21 @@ class Game(object):
 
         # Physics
         # Time step
-        self._dt = 1.0 / 60
+        self._dt = 1 / 60
         self._width, self._height = (450, 750)
         # Number of physics steps per screen frame
-        self._physics_steps_per_frame = 1
+        self._physics_steps_per_frame = 100
+        self._fps = 100
+
+
         self._mass = 10
         self._score = 0
+        self._frame = 0
+        self.num_actions = 32
+        self.action_space = np.linspace(0, 450, self.num_actions)
+        self.frame_shape = (450, 750, 3)
         self._load_args(args)
+        self._play_sound = False
 
         # 游戏是否结束
         self._timer = True
@@ -62,6 +61,11 @@ class Game(object):
         self._running = True
         self._add_coll_handler()
 
+    @staticmethod
+    def seed(seed):
+        random.seed(seed)
+        np.random.seed(seed)
+
     def _load_sound(self):
         self._fall_sound = pygame.mixer.Sound("./game/fall.mp3")
         self._merge_sound = pygame.mixer.Sound("./game/merge.mp3")
@@ -76,8 +80,9 @@ class Game(object):
             self._size_map.append(int(ball.size * 16))
             self._color_map.append(ball.color)
 
-    def _genereate_random_ball(self):
-        return choice(5, size=1, p=[0.3, 0.3, 0.2, 0.1, 0.1])[0]
+    @staticmethod
+    def _genereate_random_ball():
+        return np.random.choice(5, size=1, p=[0.3, 0.3, 0.2, 0.1, 0.1])[0]
 
     def _add_id(self, ball_id):
         if ball_id + 1 >= len(self._size_map):
@@ -98,15 +103,14 @@ class Game(object):
                             self._balls.remove(shape)
                             self._space.remove(shape, shape.body)
                         except Exception:
-                            pass
+                            return True
                     self._create_ball(ball_id=ball_id, pos=pos,
                                       ball_type=pymunk.Body.DYNAMIC, idx=0)
                     self._score += (ball_id + 1)
-                    print(self._score)
-                    self._merge_sound.play()
-                    return True
-                else:
-                    return True
+                    # self._merge_sound.play()
+            else:
+                cirle_1.body._set_velocity = (0, 0)
+
             return True
 
         handler = self._space.add_default_collision_handler()
@@ -115,9 +119,48 @@ class Game(object):
     def _check_gameover(self):
         if len(self._balls) <= 1:
             return
-        pos_heights = [ball.body.position[1] for ball in self._balls[:-1]]
-        if min(pos_heights) < self._baulk_point[1]:
+        pos_heights = [ball.body.position[1] -
+                       ball.radius for ball in self._balls[:-1]]
+        if min(pos_heights) < 80:
             self._running = False
+
+    def _update(self, save=True):
+        # pygame
+        self._clear_screen()
+        self._draw_objects()
+        pygame.display.flip()
+        if save:
+            obs = pygame.surfarray.array3d(self._screen)
+            obs = np.mean(obs, axis=-1, keepdims=True).transpose(2, 0, 1)
+            # pygame.image.save(self._screen, f"./data/{self._frame}.png")
+            return obs
+        return False
+
+    def _step(self):
+        frames = self._physics_steps_per_frame
+        for _ in range(frames):
+            self._space.step(self._dt)
+
+    def step(self, action):
+        old_score = self._score
+        ball_id = self._genereate_random_ball()
+        self._free_static_ball((action, self._baulk_point[1] + 100))
+        self._step()
+        obs = self._update()
+        reward = self._score - old_score
+        # print(self._frame, action, reward, self._score)
+        self._frame += 1
+        self._create_ball(ball_id=ball_id)
+        self._check_gameover()
+        done = not self._running
+        # self._clock.tick(self._fps)
+        return obs, [ball_id], reward, done
+
+    def start_obs(self):
+        ball_id = self._genereate_random_ball()
+        self._create_ball(ball_id=ball_id)
+        obs = self._update()
+        return obs, [ball_id]
 
     def run(self) -> None:
         """
@@ -125,22 +168,23 @@ class Game(object):
         :return: None
         """
         # Main loop
-        ball_id = 0
-        self._create_ball(ball_id=ball_id)
+        self.start_obs()
+        action = None
         while self._running:
             # Progress time forward
-            for x in range(self._physics_steps_per_frame):
-                self._space.step(self._dt)
-
-            self._process_events()
-            # self._update_balls()
-            self._clear_screen()
-            self._draw_objects()
-            self._check_gameover()
-            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    action, _ = pygame.mouse.get_pos()
+            # action = random.randint(10, 400)
+            if action is not None:
+                self.step(action)
+                action = None
+            else:
+                self._step()
+                self._update(save=False)
             # Delay fixed time between frames
-            self._clock.tick(1000)
-            pygame.display.set_caption("fps: " + str(self._clock.get_fps()))
+            # pygame.display.set_caption("fps: " + str(self._clock.get_fps()))
+            self._clock.tick(self._fps)
         for shape in self._balls:
             self._score += (shape.id + 1)
         print(f'game over with score: {self._score}')
@@ -161,37 +205,17 @@ class Game(object):
                            (width, height - 10), 0.0),
         ]
         for line in static_lines:
-            line.elasticity = 0.95
+            line.elasticity = 0.9
             line.friction = 0.9
             line.id = -2
         self._space.add(*static_lines)
 
-    # def _process_events(self) -> None:
-    #     x = random.randint(10, 400)
-    #     self._free_static_ball((x, self._baulk_point[1] + 100))
-    #     self._fall_sound.play()
-    #     ball_id = random.randint(0, 4)
+    # def _process_events(self, action=None) -> None:
+    #     if len(self._balls):
+    #         self._free_static_ball((action, self._baulk_point[1] + 100))
+    #         self._fall_sound.play()
+    #     ball_id = self._genereate_random_ball()
     #     self._create_ball(ball_id=ball_id)
-
-    def _process_events(self) -> None:
-        """
-        Handle game and events like keyboard input. Call once per frame only.
-        :return: None
-        """
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self._running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = pygame.mouse.get_pos()
-                x = x + random.random()
-                self._free_static_ball((x, self._baulk_point[1] + 100))
-                self._fall_sound.play()
-                ball_id = self._genereate_random_ball()
-                self._create_ball(ball_id=ball_id)
-            # elif event.type == pygame.USEREVENT:
-            #     self._check_gameover()
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
-                pygame.image.save(self._screen, "bouncing_balls.png")
 
     def _free_static_ball(self, pos):
         ball = self._balls[-1]
@@ -201,12 +225,12 @@ class Game(object):
         ball.body._set_mass(self._mass)
         ball.body._set_moment(inertia)
         ball.body.position = pos
+        # self._fall_sound.play()
         self._score += (ball.id + 1)
-        print(self._score)
 
     def _create_ball(self, ball_id=None, pos=None, ball_type=pymunk.Body.STATIC, idx=None) -> None:
-        mass = 10
         radius = self._size_map[ball_id]
+        mass = 1
         inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
         body = pymunk.Body(mass, inertia, ball_type)
         if pos is None:
@@ -240,11 +264,17 @@ class Game(object):
         for ball in self._balls:
             pygame.draw.circle(self._screen, ball.color,
                                ball.body.position, ball.radius, int(ball.radius))
-        pygame.draw.aaline(self._screen, "BLUE", (0, 100), (450, 100), 1)
+        # pygame.draw.aaline(self._screen, "BLUE", (0, 100), (450, 100), 1)
 
 
 if __name__ == "__main__":
+    import os
+    for root, dirs, files in os.walk('./'):
+        for name in files:
+            if '.png' in name:  # 判断某一字符串是否具有某一字串，可以使用in语句
+                os.remove(os.path.join(root, name))  # os.move语句为删除文件语句
+
     with open("./game/style.json", 'r') as f:
         args = edict(json.load(f))
-    game = Game(args)
-    game.run()
+        game = Game(args)
+        game.run()
