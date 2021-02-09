@@ -1,13 +1,14 @@
 from collections import namedtuple
 
-from game import Game, FPS
-from model.dqn import DQN
 import torch
+
+from game import *
+from model.dqn import DQN
 
 # Hyper-parameters
 seed = 1
-env = Game()
 num_episodes = 2000
+env = Game()
 torch.manual_seed(seed)
 
 Transition = namedtuple(

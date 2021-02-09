@@ -86,8 +86,8 @@ class Game(object):
         np.random.seed(seed)
 
     def _load_sound(self):
-        self._fall_sound = pygame.mixer.Sound("./res/sound/fall.mp3")
-        self._merge_sound = pygame.mixer.Sound("./res/sound/merge.mp3")
+        self._fall_sound = pygame.mixer.Sound("./res/sounds/fall.mp3")
+        self._merge_sound = pygame.mixer.Sound("./res/sounds/merge.mp3")
 
     def _load_balls_style(self):
         self._size_map = []

@@ -1,5 +1,12 @@
+import argparse
+
+parser = argparse.ArgumentParser(description="Demo")
+parser.add_argument('--rl', type=str, default="False", help='RL Mode')
+args = parser.parse_args()
+args.rl = bool(eval(args.rl))
+print(args.rl, type(args.rl))
 # Mode
-RL_MODE = True
+RL_MODE = args.rl
 
 # Physics Engine
 DENSITY = 1  # wo assume that all fruits' density are the same

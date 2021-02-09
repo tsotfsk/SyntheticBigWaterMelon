@@ -1,9 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn.init import xavier_normal_
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
-import numpy as np
 
 
 class Net(nn.Module):
