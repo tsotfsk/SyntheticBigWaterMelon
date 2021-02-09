@@ -7,7 +7,7 @@ import numpy as np
 
 
 class Net(nn.Module):
-    def __init__(self, in_channels=1, num_actions=4):
+    def __init__(self, in_channels=1, num_actions=32):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels,
                                out_channels=32, kernel_size=3, stride=4)
@@ -92,7 +92,8 @@ class DQN():
 
             reward = (reward - reward.mean()) / (reward.std() + 1e-7)
             with torch.no_grad():
-                target_v = reward + self.gamma * self.target_net(next_state, next_ball).max(1)[0]
+                target_v = reward + self.gamma * \
+                    self.target_net(next_state, next_ball).max(1)[0]
 
             # Update...
             total_loss = 0
@@ -111,7 +112,8 @@ class DQN():
                     self.target_net.load_state_dict(self.act_net.state_dict())
             return total_loss
         else:
-            print(f"Memory Buff is too less. {self.memory_count}/{self.capacity}")
+            print(
+                f"Memory Buff is too less. {self.memory_count}/{self.capacity}")
             return None
 
 
