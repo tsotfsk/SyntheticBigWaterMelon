@@ -83,12 +83,12 @@ BALLS = {
         "size": 4
     },
     PEACH: {
-        "color": "#CE8623",
+        "color": "#FB9058",
         "score": 7,
         "size": 4
     },
     PINEAPPLE: {
-        "color": "#FAEE87",
+        "color": "#FEE043",
         "score": 8,
         "size": 4.5
     },
@@ -98,13 +98,13 @@ BALLS = {
         "size": 5
     },
     HALF_WATERMELON: {
-        "color": "#48B036",
+        "color": "#FC7B97",
         "score": 10,
         "size": 6
     },
     WATERMELON: {
         "color": "#48B036",
-        "score": 10,
+        "score": 15,
         "size": 7
     }
 }
