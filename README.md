@@ -9,7 +9,9 @@ A project using DQN(Deep Q-learning Network) to play the game Synthetic Big Wate
 
 The game is based on [pygame](https://www.pygame.org/news) and [pymunk](http://www.pymunk.org/en/latest/).
 
-![demo](./demo.gif)
+| Human               | RL                |
+| ------------------- | ----------------- |
+| ![demo](./demo.gif) | ![demo](./rl.gif) |
 
 ## Mode
 
